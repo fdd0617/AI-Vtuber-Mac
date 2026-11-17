@@ -28,23 +28,26 @@ def start_programs(config):
 
         name = program["name"]
         executable = program["executable"]  # Python 解释器的路径
-        app_path = program["parameters"][0]  # 假设第一个参数总是 app.py 的路径
+        parameters = program.get("parameters", [])
+        if not parameters:
+            raise ValueError(f"联动程序 {program['name']} 没有配置启动参数")
+        app_path = parameters[0]
 
         # 从 app.py 的路径中提取目录
         app_dir = os.path.dirname(app_path)
 
         # 使用 Python 解释器路径和 app.py 路径构建命令
-        cmd = [executable, app_path]
+        cmd = [executable, *parameters]
 
         logger.info(f"运行程序: {name} 位于: {app_dir}")
 
         # 在 app.py 文件所在的目录中启动程序
-        process = subprocess.Popen(cmd, cwd=app_dir, shell=True)
+        process = subprocess.Popen(cmd, cwd=app_dir, start_new_session=os.name != "nt")
         my_subprocesses[name] = process
 
     name = "main"
     # 用当前解释器启动 main.py，避免走上 PATH 里的 python（可能与 webui 所在的虚拟环境不是同一个）
-    process = subprocess.Popen([sys.executable, "main.py"])
+    process = subprocess.Popen([sys.executable, "main.py"], start_new_session=os.name != "nt")
     my_subprocesses[name] = process
 
     logger.info(f"运行程序: {name}")
@@ -65,7 +68,7 @@ def stop_program(name):
                 command = ["taskkill", "/F", "/T", "/PID", str(pid)]
                 subprocess.run(command, check=True)
             else:  # POSIX系统，如Linux和macOS
-                os.killpg(os.getpgid(pid), signal.SIGKILL)
+                os.killpg(pid, signal.SIGTERM)
 
             logger.info(f"程序 {name} 和 它所有的子进程都被终止.")
         except Exception as e:

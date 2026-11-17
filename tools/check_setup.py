@@ -49,21 +49,22 @@ def main():
     ap.add_argument("--online", action="store_true", help="真实调用大模型和 Fish，验证 Key（会消耗极少额度）")
     ap.add_argument("--config", default=str(ROOT / "config.json"))
     a = ap.parse_args()
+    is_macos = sys.platform == "darwin"
 
     print("== 1. 环境")
     v = sys.version_info
     if (3, 10) <= (v.major, v.minor) <= (3, 12): ok(f"Python {v.major}.{v.minor}.{v.micro}")
     else: warn(f"Python {v.major}.{v.minor}，推荐 3.11（3.10~3.12 可用）", "winget install -e --id Python.Python.3.11")
     if ".venv" not in sys.executable.replace("\\", "/"):
-        warn(f"当前不是项目虚拟环境里的 Python：{sys.executable}", "用 .venv\\Scripts\\python tools\\check_setup.py 运行")
+        warn(f"当前不是项目虚拟环境里的 Python：{sys.executable}", "使用 .venv/bin/python tools/check_setup.py 运行" if is_macos else "用 .venv\\Scripts\\python tools\\check_setup.py 运行")
     missing = []
     for mod in ("nicegui", "openai", "edge_tts", "pygame", "pydub", "websocket", "requests", "loguru"):
         try: importlib.import_module(mod)
         except Exception: missing.append(mod)
-    if missing: fail("缺少依赖：" + ", ".join(missing), ".venv\\Scripts\\python -m pip install -r requirements\\core+platform.lock.txt -i https://pypi.tuna.tsinghua.edu.cn/simple")
+    if missing: fail("缺少依赖：" + ", ".join(missing), "./setup-macos.sh" if is_macos else ".venv\\Scripts\\python -m pip install -r requirements\\core+platform.lock.txt -i https://pypi.tuna.tsinghua.edu.cn/simple")
     else: ok("依赖已安装")
     if shutil.which("ffmpeg"): ok("FFmpeg 可用")
-    else: warn("找不到 ffmpeg（点歌切歌、读歌曲时长要用）", "winget install -e --id Gyan.FFmpeg，装完重新打开命令行窗口")
+    else: warn("找不到 ffmpeg（点歌切歌、读歌曲时长要用）", "brew install ffmpeg" if is_macos else "winget install -e --id Gyan.FFmpeg，装完重新打开命令行窗口")
 
     print("== 2. 配置文件")
     try:
@@ -72,7 +73,8 @@ def main():
         fail(f"读不了 {a.config}：{e}", "config.json 格式坏了：用记事本改过的话检查引号和逗号，或从仓库重新下载这个文件再填 Key")
         return
     plat = c.get("platform")
-    ok("弹幕平台：抖音") if plat == "dy" else warn(f"弹幕平台是 {plat}，不是抖音（dy）", "后台「直播接入」→ 平台 选「抖音」")
+    recommended_platform = "dy2" if is_macos else "dy"
+    ok("弹幕平台：抖音（Mac 内置监听）" if is_macos else "弹幕平台：抖音") if plat == recommended_platform else warn(f"弹幕平台是 {plat}，不是本系统推荐的抖音监听方式", "后台「直播接入」→ 平台 选「抖音2」" if is_macos else "后台「直播接入」→ 平台 选「抖音」")
     chat = c.get("chat_type"); api = c.get("openai", {}).get("api", ""); key = (c.get("openai", {}).get("api_key") or [""])[0]
     model = c.get("chatgpt", {}).get("model", "")
     if chat != "chatgpt":
@@ -101,17 +103,18 @@ def main():
     js = ROOT / "Live2D" / "js" / "model_name.js"
     if js.exists() and name and name not in js.read_text("utf-8", "replace"):
         warn(f"Live2D/js/model_name.js 里的模型名和配置（{name}）不一致", "两处要改成同一个模型名")
-    exe = ROOT / "tools" / "DouyinBarrageGrab" / "WssBarrageServer.exe"
-    ok("弹幕监听程序已就位") if exe.exists() else fail("找不到 tools/DouyinBarrageGrab/WssBarrageServer.exe", "按教程第四步下载 Release 包并解压到 tools/DouyinBarrageGrab/")
+    if not is_macos:
+        exe = ROOT / "tools" / "DouyinBarrageGrab" / "WssBarrageServer.exe"
+        ok("弹幕监听程序已就位") if exe.exists() else fail("找不到 tools/DouyinBarrageGrab/WssBarrageServer.exe", "按教程第四步下载 Release 包并解压到 tools/DouyinBarrageGrab/")
     songs = list((ROOT / "song").glob("*.mp3")) if (ROOT / "song").exists() else []
     ok(f"本地歌曲 {len(songs)} 首（没有也行，点歌会去网易云搜）")
 
     print("== 4. 服务（开播前全部启动后再看这一节）")
-    svc = [(8888, "弹幕监听", "以管理员身份运行 tools\\DouyinBarrageGrab\\WssBarrageServer.exe"),
-           (8081, "管理后台", "双击 启动WebUI管理后台.bat"),
+    svc = ([] if is_macos else [(8888, "弹幕监听", "以管理员身份运行 tools\\DouyinBarrageGrab\\WssBarrageServer.exe")]) + [
+           (8081, "管理后台", "运行 ./start-macos.sh" if is_macos else "双击 启动WebUI管理后台.bat"),
            (8082, "主程序", "后台右下角「操作」→「一键运行」"),
            (12345, "Live2D 画面", "主程序启动后自动提供；没有的话检查 Live2D 是否启用"),
-           (5500, "字幕服务", "双击 启动字幕和口型.bat")]
+           (5500, "字幕服务", "运行 ./start-macos-stage-services.sh" if is_macos else "双击 启动字幕和口型.bat")]
     for p, label, fix in svc:
         (ok if port_open(p) else warn)(f"{label}（端口 {p}）" + ("运行中" if port_open(p) else "没有运行"), "" if port_open(p) else fix)
     if port_open(8082):

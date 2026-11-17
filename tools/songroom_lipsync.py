@@ -18,14 +18,21 @@ def main(probe=False):
     out=ROOT/"out/songroom"
     out.mkdir(parents=True,exist_ok=True)
     lock=(out/"lipsync.lock").open("a+b")
-    import msvcrt
-    lock.seek(0)
-    if not lock.read(1):lock.write(b"0");lock.flush()
-    lock.seek(0)
-    try:msvcrt.locking(lock.fileno(),msvcrt.LK_NBLCK,1)
-    except OSError:
-        print("LIPSYNC_ALREADY_RUNNING",flush=True)
-        return
+    if os.name == "nt":
+        import msvcrt
+        lock.seek(0)
+        if not lock.read(1):lock.write(b"0");lock.flush()
+        lock.seek(0)
+        try:msvcrt.locking(lock.fileno(),msvcrt.LK_NBLCK,1)
+        except OSError:
+            print("LIPSYNC_ALREADY_RUNNING",flush=True)
+            return
+    else:
+        import fcntl
+        try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except OSError:
+            print("LIPSYNC_ALREADY_RUNNING",flush=True)
+            return
     (out/"lipsync.pid").write_text(str(os.getpid()),encoding="ascii")
     print("LIPSYNC_SESSION_METER_STARTED",flush=True)
     previous=None

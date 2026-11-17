@@ -2,6 +2,7 @@
 import ctypes as c
 from ctypes import wintypes as w
 import socket
+import sys
 import time
 import uuid
 
@@ -43,6 +44,9 @@ def listener_pid(port):
 
 class CoreSessionMeter:
     def __init__(self,port=8082):
+        if sys.platform != "win32":
+            self._init_macos()
+            return
         self.port=port
         self.pid=0
         self.meters=[]
@@ -52,6 +56,43 @@ class CoreSessionMeter:
         self.enumerator=c.c_void_p()
         checked(self.ole.CoCreateInstance(c.byref(GUID("bcde0395-e52f-467c-8e3d-c4579291692e")),None,1,
             c.byref(GUID("a95664d2-9614-4f35-a746-de8db63617e6")),c.byref(self.enumerator)))
+
+    def _init_macos(self):
+        """Read a BlackHole/loopback input. macOS does not expose per-process audio sessions."""
+        import os
+        import sounddevice as sd
+        import numpy as np
+
+        requested = os.environ.get("DAFEIYU_AUDIO_MONITOR_DEVICE", "BlackHole")
+        devices = sd.query_devices()
+        if requested.isdigit():
+            index = int(requested)
+        else:
+            index = next((i for i, device in enumerate(devices)
+                          if requested.casefold() in device["name"].casefold()
+                          and device["max_input_channels"] > 0), None)
+        self._mac_peak = 0.0
+        self._mac_index = index
+        self._mac_stream = None
+        self.meters = []
+        self.last_scan = time.monotonic()
+        if index is None:
+            return
+
+        def update_peak(indata, frames, timing, status):
+            self._mac_peak = float(np.max(np.abs(indata))) if len(indata) else 0.0
+
+        channels = min(2, int(devices[index]["max_input_channels"]))
+        samplerate = int(devices[index]["default_samplerate"])
+        self._mac_stream = sd.InputStream(device=index, channels=channels,
+                                           samplerate=samplerate, blocksize=1024,
+                                           callback=update_peak)
+        self._mac_stream.start()
+
+    def _read_macos(self):
+        return {"source_pid": 0, "session_count": int(self._mac_stream is not None),
+                "peak": round(self._mac_peak, 5), "updated_at": time.time(),
+                "monitor_device": self._mac_index}
 
     def scan(self):
         self.last_scan=time.monotonic()
@@ -92,6 +133,8 @@ class CoreSessionMeter:
         release(collection)
 
     def read(self):
+        if sys.platform != "win32":
+            return self._read_macos()
         if time.monotonic()-self.last_scan>2:self.scan()
         value=0.0
         for meter in self.meters:

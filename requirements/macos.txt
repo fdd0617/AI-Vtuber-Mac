@@ -1,0 +1,2 @@
+# macOS-only helper for reading a virtual loopback input such as BlackHole.
+sounddevice==0.5.2

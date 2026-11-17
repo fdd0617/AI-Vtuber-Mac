@@ -4,7 +4,9 @@
 
 一套能在抖音开播的 AI 虚拟主播程序：观众发弹幕，大肥鱼用自己的声音实时回答，嘴型跟着声音动，台词显示成字幕。观众还可以点歌，没人说话时会自动放背景音乐。
 
-**第一次使用请看：[📖 图文教程](docs/图文教程.md)**，从安装 Python 到在直播伴侣里开播，每一步都有截图。这份文档也可以**直接交给 AI 助手**（Claude Code、Codex 等），让它帮你把环境配好。
+Windows 用户第一次使用请看：[📖 图文教程](docs/图文教程.md)，从安装 Python 到在直播伴侣里开播，每一步都有截图。这份文档也可以直接交给 AI 助手帮你配置。
+
+macOS 用户请看 [macOS 使用说明](docs/macos.md)。Mac 可运行主程序、管理后台、Live2D 和字幕服务；抖音监听使用内置「抖音2」实现，协议可用性可能随平台变化。
 
 简明版说明见 [docs/大肥鱼定制版使用说明.md](docs/大肥鱼定制版使用说明.md)；配置好以后，可以用 `.venv\Scripts\python tools\check_setup.py --online` 做开播前自检。
 
@@ -30,7 +32,7 @@
                        OBS 浏览器来源：海底场景 + Live2D + 字幕 + 口型 → 虚拟摄像头 → 抖音直播伴侣
 ```
 
-## 快速开始
+## Windows 快速开始
 
 ```bat
 git clone https://github.com/zbsdsb/dafeiyu-ai-vtuber.git
