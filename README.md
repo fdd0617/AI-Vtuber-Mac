@@ -2,13 +2,9 @@
 
 [![LINUX DO](https://img.shields.io/badge/社区-LINUX%20DO-blue)](https://linux.do/)
 
-一套能在抖音开播的 AI 虚拟主播程序：观众发弹幕，大肥鱼用自己的声音实时回答，嘴型跟着声音动，台词显示成字幕。观众还可以点歌，没人说话时会自动放背景音乐。
+一套面向抖音直播的 AI 虚拟主播程序：观众发弹幕，大肥鱼用自己的声音回答，Live2D 角色显示字幕并同步口型；观众还可以点歌，空闲时自动播放背景音乐。
 
-Windows 用户第一次使用请看：[📖 图文教程](docs/图文教程.md)，从安装 Python 到在直播伴侣里开播，每一步都有截图。这份文档也可以直接交给 AI 助手帮你配置。
-
-macOS 用户请看 [macOS 使用说明](docs/macos.md)。Mac 可运行主程序、管理后台、Live2D 和字幕服务；抖音监听使用内置「抖音2」实现，协议可用性可能随平台变化。
-
-简明版说明见 [docs/大肥鱼定制版使用说明.md](docs/大肥鱼定制版使用说明.md)；配置好以后，可以用 `.venv\Scripts\python tools\check_setup.py --online` 做开播前自检。
+支持 Windows 和 macOS。**Mac 用户从下面的 macOS 快速开始开始**；Windows 用户请看 [图文教程](docs/图文教程.md)。完整的 Mac 依赖、音频路由和限制见 [macOS 使用说明](docs/macos.md)。
 
 ## 能做什么
 
@@ -27,16 +23,38 @@ macOS 用户请看 [macOS 使用说明](docs/macos.md)。Mac 可运行主程序�
 ## 运行流程
 
 ```text
-抖音直播间弹幕 → 弹幕监听程序 (8888) → 主程序 → 大模型回答 → Fish Audio 配音 → 电脑播放
-                                                              ↓
-                       OBS 浏览器来源：海底场景 + Live2D + 字幕 + 口型 → 虚拟摄像头 → 抖音直播伴侣
+macOS：抖音网页监听（内置「抖音2」） ─┐
+Windows：抖音弹幕监听程序 ────────────┴→ 主程序 → 大模型 → TTS → 音频播放
+                                                         ↓
+                         Live2D 场景 + 字幕 + 口型 → OBS → 直播平台
 ```
+
+## macOS 快速开始
+
+需要 macOS、Python 3.10–3.12、Xcode Command Line Tools 和 Homebrew。首次安装可先运行 `xcode-select --install`，再安装 PortAudio 和 FFmpeg：
+
+```bash
+brew install portaudio ffmpeg
+git clone https://github.com/fdd0617/AI-Vtuber-Mac.git
+cd AI-Vtuber-Mac
+./setup-macos.sh
+./start-macos.sh
+```
+
+管理后台打开 <http://127.0.0.1:8081>。在「直播接入」中选择「抖音2」，填写直播间号并保存；在「人设与大脑」配置模型 API Key。Fish Audio Key 需按 [macOS 使用说明](docs/macos.md) 配置，也可将 TTS 切换为 Edge TTS。
+
+直播场景可作为 OBS 浏览器来源：
+
+- 竖屏：`http://127.0.0.1:12345/Live2D/stage-portrait.html`，1080 × 1920
+- 横屏：`http://127.0.0.1:12345/Live2D/stage-landscape.html`，1920 × 1080
+
+大肥鱼 Live2D 模型不包含在仓库里，需要自行取得并放到 `Live2D/live2d-model/大肥鱼/`。音量驱动的口型需要额外配置 BlackHole 虚拟音频设备；抖音网页监听依赖非官方协议，可能因平台更新失效。Mac 没有抖音直播伴侣时，请使用可用的 OBS 推流/虚拟摄像头方案。详细步骤见 [macOS 使用说明](docs/macos.md)。
 
 ## Windows 快速开始
 
 ```bat
-git clone https://github.com/zbsdsb/dafeiyu-ai-vtuber.git
-cd dafeiyu-ai-vtuber
+git clone https://github.com/fdd0617/AI-Vtuber-Mac.git
+cd AI-Vtuber-Mac
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements\core+platform.lock.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
@@ -51,7 +69,7 @@ python -m venv .venv
 
 ## 仓库里不含的东西
 
-API Key、大肥鱼模型、弹幕监听程序、歌曲文件都不在仓库里，需要你自己准备。`config.json` 里所有 Key 都是空的，填你自己的就行。
+API Key、大肥鱼 Live2D 模型和歌曲文件不在仓库里，需要自行准备。Windows 还需要单独下载抖音弹幕监听程序；macOS 使用内置「抖音2」监听，不需要该 Windows 程序。`config.json` 中的 API Key 为空，请填入自己的密钥。
 
 ## 社区
 
